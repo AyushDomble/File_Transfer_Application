@@ -20,6 +20,7 @@ def main():
         '01-Use-the-application': {'.md'},
         '02-Understand-and-integrate': {'.md'},
         '03-Validate-and-operate': {'.md'},
+        'demo': {'.png', '.md'},
     }
     for folder, suffixes in folders.items():
         for path in (root / folder).rglob('*'):
@@ -34,6 +35,7 @@ def main():
         'requirements.txt',
         'requirements-dev.txt',
         'requirements-release-lock.txt',
+        'LICENSE',
     ):
         path = root / name
         if path.exists():
