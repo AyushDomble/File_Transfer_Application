@@ -1,3 +1,16 @@
+![Python](https://img.shields.io/badge/Python-3.14-blue?style=for-the-badge&logo=python)
+![FastAPI](https://img.shields.io/badge/FastAPI-0.110%2B-009688?style=for-the-badge&logo=fastapi)
+![Uvicorn](https://img.shields.io/badge/Uvicorn-ASGI%20Server-4051B5?style=for-the-badge)
+![Pydantic](https://img.shields.io/badge/Pydantic-2.6%2B-E92063?style=for-the-badge&logo=pydantic)
+![pywebview](https://img.shields.io/badge/pywebview-5.1%2B-green?style=for-the-badge)
+![TLS](https://img.shields.io/badge/Security-TLS%20%2F%20cryptography-black?style=for-the-badge)
+![WebSockets](https://img.shields.io/badge/Realtime-WebSockets-orange?style=for-the-badge)
+![Playwright](https://img.shields.io/badge/Testing-Playwright%20%2B%20Pytest-45BA4B?style=for-the-badge&logo=playwright)
+![PyInstaller](https://img.shields.io/badge/Packaging-PyInstaller-yellow?style=for-the-badge)
+![Platform](https://img.shields.io/badge/Platform-Windows%20x64-0078D6?style=for-the-badge)
+
+---
+
 # File Transfer
 
 Local file sharing with clear permissions, recoverable transfers, and device-to-device chat.
@@ -11,14 +24,16 @@ The interface combines a native desktop window with a local web application. It
 provides host-side receiving rules, approval for each selected upload group,
 optional ZIP packaging, individual and bulk transfer controls, and live progress.
 
+---
+
 [Get started](#install-run-and-test) · [Features](#key-features) ·
-[Screenshots](#application-preview) · [Architecture](#project-architecture) ·
-[Project structure](#project-structure) · [Tech stack](#tech-stack)
+[Screenshots](#application-preview) · [Architecture](#project-architecture) · [Tech stack](#tech-stack)
+
+---
 
 ![File Transfer landing screen in the dark theme](demo/home-dark.png)
 
-*Application UI preview. Screenshots use illustrative browser-test data; see the
-[preview notes](demo/README.md).*
+---
 
 ## Key features
 
@@ -38,6 +53,8 @@ optional ZIP packaging, individual and bulk transfer controls, and live progress
 One host can serve multiple clients. Each client connection targets one host at a
 time. The five-transfer default is per peer, not a host-wide limit on all clients.
 
+---
+
 ## What distinguishes this design
 
 The value is in the combination of explicit receiving permission and practical
@@ -56,6 +73,8 @@ transfer control—not a claim that these capabilities are exclusive to this pro
 - **Inspectable implementation:** plain HTML/CSS/JavaScript, a Python backend,
   explicit protocol frames, and focused tests make the system approachable to study.
 
+---
+
 ## Application preview
 
 These images are application UI captures using deterministic test fixtures.
@@ -64,11 +83,15 @@ credentials or measured performance. Exact controls and layout may differ from
 the installed build. Static images do not demonstrate animation or verify a real
 network exchange.
 
+---
+
 ### Transfer queue
 
 Individual progress, transfer states, upload controls, and bulk actions in the dark theme.
 
 ![Client transfer queue with illustrative active, paused, completed, and queued files](demo/transfers-dark.png)
+
+---
 
 ### Host controls and file transfer rules
 
@@ -77,11 +100,15 @@ and a live rules summary.
 
 ![Host dashboard showing file transfer rules in the dark theme](demo/host-rules-dark.png)
 
+---
+
 ### Device chat and light appearance
 
 A movable chat panel keeps conversations alongside sharing controls.
 
 ![Host interface and device chat panel in the light theme](demo/chat-light.png)
+
+---
 
 ### Searching for nearby hosts
 
@@ -89,6 +116,8 @@ A still capture of the radar-style host-search animation while discovery is in p
 This PNG shows the searching state; it is not an animated recording.
 
 ![Client searching for nearby hosts with the radar-style search indicator](demo/host-search.png)
+
+---
 
 ## Project architecture
 
@@ -129,6 +158,8 @@ sessions on the host. Managers own transfer lifecycles, schedulers admit queued
 work, and engines move and validate file chunks. A session routes frames by
 transfer ID. SQLite stores metadata; file contents remain on disk.
 
+---
+
 ### How a transfer reaches disk
 
 ```mermaid
@@ -159,6 +190,8 @@ transfers, not multiple unacknowledged chunks within one file.
 | Memory → disk | Bounded buffers and flow-control budgets; staged, partial, and completed file data consume disk capacity. |
 | Disconnect → recovery | Persisted metadata and peer reconciliation enable recovery; unfinished browser staging is not guaranteed to survive restart. |
 
+---
+
 ## Tech stack
 
 | Layer | Technology | Role |
@@ -177,6 +210,8 @@ The pinned release environment targets **Windows x64 / Python 3.14.4**. That is 
 validation target, not a claim of equivalent support on every operating system.
 The setup below distinguishes running the application from installing the larger
 test toolchain.
+
+---
 
 ## Install, run, and test
 
@@ -206,6 +241,8 @@ cd "C:\Users\YOUR_USERNAME\Desktop\filetransfer2"
 python --version
 ```
 
+---
+
 ### 2. Set up the application environment
 
 Create the virtual environment once, then install the pinned dependencies:
@@ -224,6 +261,8 @@ dependencies. It is not a complete development lock or a vulnerability audit.
 
 For normal use, proceed to launching the application. Browser-test dependencies
 are only needed if you also want to run the tests.
+
+---
 
 ### 3. Run the application
 
@@ -251,6 +290,8 @@ blocked even when manual address entry works. See [Quick start](01-Use-the-appli
 [Host guide](01-Use-the-application/HOST_GUIDE.md) and
 [Client guide](01-Use-the-application/CLIENT_GUIDE.md) for details.
 
+---
+
 ### 4. Install testing dependencies
 
 If you want to verify the project locally, run:
@@ -273,6 +314,8 @@ WebView2 runtime used by the desktop window. **Close the application before test
 to avoid port conflicts. Tests require writable temporary storage and, for native
 integration, working local networking and subprocess creation.
 
+---
+
 ### 5. Check test collection
 
 ```powershell
@@ -283,6 +326,8 @@ The current project should collect **721 Python test cases** with the testing
 dependencies installed. Collection checks test discovery/imports; it does not
 execute the tests or establish that they pass. Shared fixtures live in
 `tests/helpers/`; the runnable cases remain in `tests/test_*.py`.
+
+---
 
 ### 6. Run complete verification
 
@@ -313,6 +358,8 @@ skipped required Python cases. A timeout, missing Chromium or blocked local sock
 is not a successful verification result. Read `python.log` or `node.log` for the
 underlying failure. Keep reports and test-generated data out of Git.
 
+---
+
 ## Use the application
 
 - [Product overview](01-Use-the-application/PRODUCT_OVERVIEW.md)
@@ -328,6 +375,8 @@ underlying failure. Keep reports and test-generated data out of Git.
 - [Device chat](01-Use-the-application/CHAT.md)
 - [Appearance and accessibility](01-Use-the-application/APPEARANCE_AND_ACCESSIBILITY.md)
 
+---
+
 ## Understand and integrate
 
 - [Architecture](02-Understand-and-integrate/ARCHITECTURE.md)
@@ -341,6 +390,8 @@ underlying failure. Keep reports and test-generated data out of Git.
 - [Security](02-Understand-and-integrate/SECURITY.md)
 - [Operating-system concepts](OPERATING_SYSTEM_CONCEPTS.md)
 - [Computer-networking concepts](COMPUTER_NETWORK_CONCEPTS.md)
+
+---
 
 ## Validate and operate
 
@@ -356,6 +407,8 @@ underlying failure. Keep reports and test-generated data out of Git.
 - [Developer guide](03-Validate-and-operate/DEVELOPER_GUIDE.md)
 - [Glossary](03-Validate-and-operate/GLOSSARY.md)
 
+---
+
 **Rules** sections describe required behavior or operational precautions. Defaults
 and hard limits are labelled separately from measured benchmark observations.
 **Verify** sections run from the application source root after installing development
@@ -366,3 +419,9 @@ Measurements in Performance and Testing identify their evidence and sample scope
 Document editing did not rerun benchmarks or certify a different machine. Feature
 and technical guides are organized in the three documentation folders; the concept
 guides are at the project root, and the test-layout guide is in `tests/README.md`.
+
+---
+
+## 📄 License
+This project is licensed under the **MIT License**.  
+See the [LICENSE](LICENSE) file for details.
