@@ -1,0 +1,42 @@
+.chat-widget {position:relative; z-index:50; font-size:13px}
+.chat-launcher {position:fixed; right:24px; bottom:22px; border-radius:30px; padding:14px 21px; box-shadow:0 6px 28px #19144535; min-height:48px}
+.chat-launcher>span:first-child {font-size:20px; line-height:1}
+.chat-badge {background:#fff; color:#4543bd; border-radius:20px; padding:2px 6px; min-width:21px; font-size:11px}
+.chat-panel {position:fixed; right:24px; bottom:84px; width:370px; max-width:calc(100vw - 24px); height:560px; max-height:calc(100dvh - 100px); background:var(--panel); border:1px solid var(--border); border-radius:20px; box-shadow:0 20px 70px #090e2930; display:flex; flex-direction:column; overflow:hidden; animation:enter .2s ease}
+.chat-header {display:flex; align-items:center; gap:6px; padding:15px 14px; background:var(--accent-soft); border-bottom:1px solid var(--border); flex-shrink:0}
+.chat-grip {flex:1; min-width:0; cursor:grab; touch-action:none; user-select:none; padding:2px 3px; border-radius:5px}
+.chat-grip:active {cursor:grabbing}
+.chat-grip strong {font-size:15px; display:block; color:var(--text)}
+.chat-grip small {display:block; color:var(--muted); font-size:10px; margin-top:3px}
+.chat-header button {color:var(--text); background:transparent; padding:5px; width:30px; height:32px; font-size:20px; border:1px solid var(--border); border-radius:9px}
+.chat-contact {padding:12px 17px 10px; border-bottom:1px solid var(--border); flex-shrink:0}
+.chat-contact label {color:var(--muted); font-size:10px; text-transform:uppercase; letter-spacing:1px; display:block; margin-bottom:6px}
+.chat-contact select {width:100%; border:1px solid var(--border); color:var(--text); background:var(--surface); padding:8px; border-radius:8px; font:inherit; font-size:12px; text-overflow:ellipsis}
+.chat-status {font-size:10px; color:var(--muted); margin:7px 0 0}
+.chat-messages {flex:1; min-height:0; overflow:auto; overscroll-behavior:contain; padding:15px 16px; display:flex; flex-direction:column; gap:12px; scrollbar-width:thin}
+.chat-messages:empty {display:none}
+.chat-message {max-width:88%; align-self:flex-start; animation:enter .18s ease; min-width:0}
+.chat-message.is-mine {align-self:flex-end}
+.chat-message p {margin:0; padding:10px 13px; background:var(--surface); border-radius:14px 14px 14px 4px; color:var(--text); white-space:pre-wrap; overflow-wrap:anywhere; font-size:13px; line-height:1.5}
+.chat-message.is-mine p {background:var(--accent-soft); border-radius:14px 14px 4px 14px}
+.chat-message-meta {font-size:9px; margin:4px 3px 0; color:var(--muted); display:flex; align-items:center; gap:5px}
+.chat-message.is-mine .chat-message-meta {justify-content:flex-end}
+.chat-message[data-status="unconfirmed"] .chat-message-meta {color:var(--danger)}
+.chat-retry {font-size:10px; padding:3px 7px; color:var(--danger); background:var(--danger-soft)}
+.chat-empty {flex:1; min-height:40px; overflow:auto; text-align:center; padding:25px 20px; color:var(--muted)}
+.chat-empty>span {display:block; font-size:25px; color:var(--accent); margin-bottom:10px}
+.chat-empty strong {display:block; font-size:13px; color:var(--text); font-weight:600}
+.chat-empty p {font-size:11px; line-height:1.7}
+.chat-latest {align-self:center; padding:5px 12px!important; font-size:10px; margin-bottom:6px; flex-shrink:0}
+.chat-compose {padding:12px 16px 10px; border-top:1px solid var(--border); flex-shrink:0}
+.chat-compose textarea {resize:none; width:100%; min-height:48px; max-height:80px; border:1px solid var(--border); border-radius:10px; padding:10px 12px; background:var(--bg); color:var(--text); font:inherit; font-size:13px}
+.chat-compose textarea:disabled {opacity:.6}
+.chat-compose-footer {display:flex; justify-content:space-between; align-items:center; margin-top:7px}
+.chat-counter,.chat-hint {font-size:10px; color:var(--muted)}
+.chat-hint {margin-top:6px}
+.chat-send {font-size:11px; padding:8px 13px}
+.chat-error {font-size:11px; color:var(--danger); overflow-wrap:anywhere; max-height:54px; overflow:auto; margin-top:5px}
+.chat-error:empty {display:none}
+.chat-sr-only {position:absolute; width:1px; height:1px; padding:0; margin:-1px; overflow:hidden; clip:rect(0,0,0,0); white-space:nowrap; border:0}
+@media(max-width:480px) {.chat-panel {right:12px; bottom:76px; height:540px}.chat-launcher {right:16px; bottom:16px}.chat-header {padding:12px}.chat-grip small {font-size:9px}.chat-header button {width:34px; height:34px}}
+@media(max-height:600px) {.chat-panel {max-height:calc(100dvh - 20px); bottom:10px}.chat-hint,.chat-contact label,.chat-grip small {display:none}.chat-contact {padding:8px 12px}.chat-compose {padding:8px 12px}.chat-header {padding:8px 12px}}

@@ -1,0 +1,46 @@
+.client-page:not(.is-connected) #queueCard,.client-page:not(.is-connected) .panel.right,.client-page:not(.is-connected) .chat-widget {display:none!important}
+.client-page:not(.is-connected) .panel.left {display:block;max-width:650px;margin:auto}
+.client-page:not(.is-connected) .page-heading {max-width:850px;margin:0 auto 30px}
+.client-page #scanVisual {height:auto;min-height:250px;position:relative;display:grid;place-items:center;overflow:hidden;border-radius:18px;background:radial-gradient(ellipse,var(--accent-soft),transparent 70%)}
+#scanVisual>.radar {position:absolute;opacity:.6;width:210px;height:210px;pointer-events:none}
+.radar-hosts {z-index:1;list-style:none;margin:18px 0;padding:0 12px;display:grid!important;grid-template-columns:repeat(2,minmax(0,1fr));gap:12px;width:100%;max-height:290px;overflow:auto}
+.radar-hosts:empty {display:none!important}
+.radar-hosts .host-choice {width:100%;min-height:64px;background:var(--panel);color:var(--text);border:1px solid var(--accent);border-radius:16px;box-shadow:var(--shadow);animation:host-arrive .4s ease both;overflow-wrap:anywhere;white-space:normal}
+.radar-hosts .host-choice[aria-pressed=true] {background:var(--accent-soft);box-shadow:0 0 0 2px var(--accent)}
+#manualConnect {margin:18px 0} #manualConnect button {margin-top:12px}
+#pinStep {margin-top:18px;animation:host-arrive .3s ease both}
+.zip-option {display:flex;align-items:center;gap:10px;margin-top:18px;font-weight:600}
+.refresh-controls {display:flex;justify-content:flex-end;align-items:center;gap:12px;margin:-8px 0 18px;min-width:0}
+.refresh-controls [role=status] {overflow-wrap:anywhere}
+.group-notice {width:min(420px,calc(100vw - 32px));padding:24px;border:1px solid var(--border);border-radius:18px;background:var(--panel);color:var(--text);box-shadow:var(--shadow)}
+.group-notice::backdrop {background:#080c1899}
+.group-notice p {margin:0 0 20px;line-height:1.6}
+.group-notice button {float:right;min-width:80px}
+input[type=checkbox],input[type=radio],input[type=range] {accent-color:var(--accent)}
+.file-disclosure {border:1px solid var(--border);border-radius:12px;padding:12px;margin-top:18px}
+.file-disclosure summary {cursor:pointer;font-weight:600}
+.file-disclosure .file-list,#transferQueue {max-height:480px;overflow:auto;scrollbar-width:thin}
+.permission-options {display:grid;grid-template-columns:1fr 1fr;gap:8px;margin:12px 0 20px}
+.host-page .settings-card {grid-column:2;grid-row:3}
+.host-page .shared-card {grid-column:1;grid-row:3}
+.permission-options label {padding:12px 8px;border:1px solid var(--border);border-radius:10px;cursor:pointer;display:flex;gap:7px;align-items:center;font-size:12px}
+.permission-options label:has(input:checked) {border-color:var(--success);background:var(--success-soft);color:var(--success)}
+.extension-picker {border:1px solid var(--border);border-radius:12px;padding:12px}
+.extension-picker summary {cursor:pointer}
+.extension-options {max-height:170px;overflow:auto;display:grid;grid-template-columns:1fr 1fr;gap:8px;margin:12px 0}
+.extension-options label {display:flex;align-items:center;gap:8px}
+.extension-chips {display:flex;flex-wrap:wrap;gap:6px;margin:10px 0}
+.extension-chips button {background:var(--accent-soft);color:var(--accent);padding:5px 9px;border:1px solid var(--border);border-radius:20px}
+.size-controls {display:flex;gap:8px;align-items:center}.size-controls input {flex:1}.size-controls select {background:var(--surface);color:var(--text);border:1px solid var(--border);padding:12px;border-radius:10px}
+#sizeSlider {width:100%;margin:18px 0 0}.size-endpoints {display:flex;justify-content:space-between;color:var(--muted);font-size:11px}
+.rule-summary {border:1px solid var(--border);border-radius:12px;background:var(--surface);padding:14px;margin:18px 0;font-size:12px;overflow-wrap:anywhere}
+.batch-card {padding:12px;border:1px solid var(--border);border-radius:12px;margin:10px 0;background:var(--surface);overflow-wrap:anywhere}
+.batch-card details {margin:10px 0}.batch-card ul {max-height:160px;overflow:auto;padding-left:18px}.batch-card button {margin:6px 6px 0 0}
+.success-toast {position:fixed;z-index:100;top:90px;left:50%;transform:translateX(-50%);background:var(--success-soft);color:var(--success);border:1px solid var(--success);border-radius:18px;padding:18px 26px;box-shadow:var(--shadow);max-width:90vw;animation:celebrate .6s ease both;pointer-events:none}
+.success-toast strong {font-size:20px;margin-right:10px}
+.transfer-row[data-state=completed] {animation:transfer-done .7s ease both}
+@keyframes host-arrive {from {opacity:0;transform:translateY(10px) scale(.95)} to {opacity:1;transform:none}}
+@keyframes celebrate {0% {opacity:0;translate:0 -20px;scale:.85} 65% {scale:1.04} 100% {opacity:1;translate:0 0;scale:1}}
+@keyframes transfer-done {0%,60% {box-shadow:0 0 0 3px var(--success);background:var(--success-soft)} 100% {box-shadow:none}}
+@media(max-width:600px) {.radar-hosts {grid-template-columns:1fr}.permission-options {grid-template-columns:1fr}.client-page:not(.is-connected) .page-heading {display:block}}
+@media(prefers-reduced-motion:reduce) {.success-toast,.transfer-row[data-state=completed],.radar-hosts .host-choice,#pinStep {animation:none!important}}

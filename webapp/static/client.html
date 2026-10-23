@@ -1,0 +1,644 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>File Transfer — Client</title>
+  <script src="/theme.js"></script>
+  <link rel="stylesheet" href="/style.css">
+  <link rel="stylesheet" href="/chat.css">
+  <link rel="stylesheet" href="/rules.css">
+  <script src="/rules.js" defer></script>
+  <script src="/refresh.js" defer></script>
+  <script src="/chat.js" defer></script>
+</head>
+<body class="client-page">
+  <a class="skip-link" href="#main">Skip to content</a>
+  <header class="topbar">
+    <a class="brand" href="/index.html"><span class="brand-mark" aria-hidden="true">⇄</span>File Transfer</a>
+    <div class="topbar-actions"><a href="/index.html">Home</a><label class="theme-picker"><span>Appearance</span><select id="themeSelect" aria-label="Color theme"><option value="system">System</option><option value="light">Light</option><option value="dark">Dark</option></select></label></div>
+  </header>
+  <main id="main" class="workspace">
+    <div class="page-heading"><div><p class="eyebrow">Your sharing space</p><h1>A little closer. A lot easier.</h1><p>Connect to a nearby host and make room for what’s next.</p></div><div class="session-badge" role="status"><span id="statusDot" class="status-dot" aria-hidden="true"></span><span id="connectionLabel">Not connected</span></div></div>
+    <div class="refresh-controls"><span id="refreshStatus" class="muted" role="status"></span><button id="refreshPage" class="secondary" type="button">↻ Refresh</button></div>
+    <div class="panel left">
+      <div class="card" id="connectCard">
+        <h2><span class="step-number">1</span>Find your host</h2>
+        <p class="intro">Keep both devices on the same network. Start hosting on the other device first.</p>
+        <div id="scanVisual" class="scan-visual"><span class="radar" aria-hidden="true"><span class="radar-core"></span><span class="orbit-dot"></span></span><ul id="discoveredList" class="radar-hosts" style="display:none;"></ul></div>
+        <div class="row">
+          <button class="secondary full-width" onclick="scanForHosts()" id="scanBtn">Find nearby hosts</button>
+        </div>
+        <div id="scanStatus" class="muted" role="status" style="margin-bottom:10px;"></div>
+        <details id="manualConnect"><summary>Enter a host address manually</summary>
+          <label class="field-label" for="manualAddress">Host IP address</label><input id="manualAddress" type="text" placeholder="192.168.1.42">
+          <button type="button" onclick="selectHost(document.getElementById('manualAddress').value)">Use this host</button>
+        </details>
+        <div id="pinStep" hidden>
+        <p id="selectedHost" class="guide"></p>
+        <form onsubmit="event.preventDefault(); connectToHost();">
+        <label for="hostInput" class="field-label">Host address</label>
+        <div class="row">
+          <input type="text" id="hostInput" placeholder="e.g. 192.168.1.42" autocomplete="off" spellcheck="false" required>
+        </div>
+        <label for="pinInput" class="field-label">6-digit PIN from the host</label>
+        <div class="row">
+          <input type="text" id="pinInput" class="pin-input" placeholder="000000" maxlength="6" inputmode="numeric" pattern="[0-9]{6}" autocomplete="one-time-code" required>
+        </div>
+        <label for="fingerprintInput" class="field-label">Host certificate fingerprint (first pairing only)</label>
+        <input id="fingerprintInput" type="text" maxlength="128" autocomplete="off" spellcheck="false" placeholder="Copy the SHA-256 fingerprint from the host screen">
+        <p class="muted">Obtain this directly from the host or a trusted channel. Leave blank for a previously paired host. A changed certificate is blocked.</p>
+        <button id="connectBtn" type="submit" class="full-width">Connect</button>
+        </form>
+        <button class="secondary" onclick="document.getElementById('pinStep').hidden=true">Choose another host</button>
+        </div>
+        <div id="connectStatus" class="muted" role="status" style="margin-top:12px;"></div>
+        <div class="guide"><span aria-hidden="true">ⓘ</span><span>The host will approve your request before you can share files.</span></div>
+      </div>
+
+      <div class="card" id="filesCard" style="display:none;">
+        <h2><span class="step-number">✓</span>Ready to share</h2>
+        <p class="intro">Send files to the host, or download something from its shared folder.</p>
+        <div class="row">
+          <button onclick="pickFiles()">Upload files...</button>
+          <button id="disconnectBtn" class="secondary" onclick="disconnect()" style="margin-left:auto;">Disconnect</button>
+        </div>
+        <button id="dropzone" onclick="pickFiles()"><span class="drop-icon" aria-hidden="true">↥</span><strong>Drop files here</strong><small>or click to browse · multiple files welcome</small></button>
+        <label class="zip-option"><input type="checkbox" id="zipSelection"> Send selection as one compressed ZIP</label>
+        <p class="muted">The host approves each selection once. ZIP contents must also satisfy its rules.</p>
+        <div id="batchProgress" aria-live="polite"></div>
+        <details class="file-disclosure"><summary>Browse files on host</summary>
+        <div class="file-toolbar"><h3>Files on host</h3><button id="refreshBtn" class="secondary" onclick="refreshFiles().catch(error => { document.getElementById('queueStatus').textContent = error.message; })">List Files</button></div>
+        <label for="fileSearch" class="field-label">Find a shared file</label><input type="search" id="fileSearch" placeholder="Search by filename" oninput="filterSharedFiles()">
+        <ul class="file-list" id="fileList"><li class="muted">No files yet.</li></ul>
+        </details>
+        <input type="file" id="fileInput" style="display:none;" multiple onchange="onFilesPicked(event)">
+      </div>
+
+      <div class="card" id="queueCard">
+        <div class="card-title queue-heading"><h2>Your transfers</h2><span class="caption">At your pace</span></div>
+        <p class="queue-hint">Pause, resume, or retry each file. Your saved transfers stay here when you reconnect.</p>
+        <div id="queueStatus" class="muted" role="status">Connecting to transfer events…</div>
+        <div class="row" id="bulkActions" style="display:none; gap:6px; margin-top:8px;">
+          <button class="secondary" onclick="pauseAllTransfers()">Pause all</button>
+          <button class="secondary" onclick="resumeAllTransfers()">Resume all</button>
+          <button class="secondary" onclick="retryAllTransfers()">Retry all</button>
+          <button class="danger" onclick="cancelAllTransfers()">Cancel all</button>
+        </div>
+        <details class="file-disclosure" open><summary>Transfer activity</summary>
+        <div class="empty-state queue-empty"><div class="empty-icon" aria-hidden="true">⇄</div><strong>A clear space for your files</strong><p>Connect to a host, then drop in files or choose a download. Progress will appear here.</p></div>
+        <div id="transferQueue" aria-label="Transfer queue"></div>
+        </details>
+
+      </div>
+    </div>
+
+    <div class="panel right">
+      <details class="activity"><summary>Activity log <span class="caption">Connection details, when you need them</span></summary><div class="log-panel" id="logPanel"></div></details>
+    </div>
+    <p class="footer-note">Direct device-to-device sharing · Keep this app open while transferring</p>
+  </main>
+
+  <script src="/app.js"></script>
+  <script>
+    const statusDot = document.getElementById('statusDot');
+    const connectCard = document.getElementById('connectCard');
+    const filesCard = document.getElementById('filesCard');
+    const connectStatus = document.getElementById('connectStatus');
+    const fileList = document.getElementById('fileList');
+    const logPanel = document.getElementById('logPanel');
+    const transferQueueEl = document.getElementById('transferQueue');
+    const bulkActionsEl = document.getElementById('bulkActions');
+    const dropzone = document.getElementById('dropzone');
+
+    // bulk actions: show the Pause all/Resume all/Cancel all/Retry all row
+    // only while there's actually something in the queue to apply them
+    // to -- a MutationObserver instead of threading a visibility check
+    // through every place a row can appear or disappear (applyEvent,
+    // renameRow, removeRow, the staging placeholder).
+    new MutationObserver(() => {
+      bulkActionsEl.style.display = transferQueueEl.children.length > 0 ? 'flex' : 'none';
+    }).observe(transferQueueEl, { childList: true });
+
+    let bulkPending = false;
+    async function bulkAction(path) {
+      if (bulkPending) return;
+      bulkPending = true;
+      const buttons = bulkActionsEl.querySelectorAll('button');
+      buttons.forEach(button => { button.disabled = true; });
+      bulkActionsEl.classList.add('busy');
+      try {
+        const result = await api(`/api/transfers/actions/${path}`, { method: 'POST' });
+        if (!result.ok) throw new Error(result.error || 'Action rejected');
+        await syncSavedTransfers();
+      } catch (error) { document.getElementById('queueStatus').textContent = error.message; }
+      finally {
+        bulkPending = false;
+        buttons.forEach(button => { button.disabled = false; });
+        bulkActionsEl.classList.remove('busy');
+      }
+    }
+    function pauseAllTransfers()  { bulkAction('pause_all'); }
+    function resumeAllTransfers() { bulkAction('resume_all'); }
+    function retryAllTransfers()  { bulkAction('retry_all'); }
+    function cancelAllTransfers() {
+      // cancel_all only knows about transfers that actually exist on
+      // the backend -- an upload still in the local staging stage
+      // (see startUpload) isn't one yet, so it wouldn't be touched by
+      // that call alone. Abort those directly too, the same way an
+      // individual Cancel click on a staging row does.
+      for (const [id, info] of Object.entries(uploadsStaging)) {
+        info.controller.abort();
+        api(`/api/uploads/${encodeURIComponent(id)}`, { method: 'DELETE' }).catch(() => {});
+      }
+      bulkAction('cancel_all');
+    }
+
+    // Files are sliced into pieces this size and staged into a local
+    // scratch file as separate small requests -- one giant Blob as a
+    // single fetch() body is a known crash/hang risk in WebView2 on
+    // large files. Small per-request chunks avoid that entirely; see
+    // webapp/api.py's create_upload_transfer_stream for what happens
+    // to them once staged.
+    const UPLOAD_CHUNK_SIZE = 4 * 1024 * 1024;  // 4 MB
+
+    // frontend queue: the queue is a direct visualization of server/client
+    // transfer state (see app.js's createTransferQueueView) -- this
+    // page's job is to request START/PAUSE/RESUME/CANCEL/RETRY and
+    // render whatever comes back over /api/transfers/events, not to
+    // run the transfers itself. Replaces the old single hand-rolled
+    // progress row and its "for (file of files) await uploadOne(file)"
+    // sequential loop, which could only ever show and move one file
+    // at a time even though the backend has supported real concurrent
+    // transfers since scheduling.
+    const transferQueue = createTransferQueueView(transferQueueEl, {
+      showControls: true,
+      onPause:  (id) => api(`/api/transfers/${id}/pause`,  { method: 'POST' }),
+      onResume: (id) => api(`/api/transfers/${id}/resume`, { method: 'POST' }),
+      onRetry: (id) => {
+        if (stagedRetryFiles[id]) {
+          const file = stagedRetryFiles[id]; delete stagedRetryFiles[id]; transferQueue.removeRow(id);
+          return startUpload(file, false);
+        }
+        return api(`/api/transfers/${id}/retry`, { method: 'POST' });
+      },
+      onDownload: id => { window.location.href = `/api/transfers/${id}/content`; },
+      onCancel: (id) => {
+        const staging = uploadsStaging[id];
+        if (staging) {
+          // No transfer exists on the backend yet -- still local
+          // browser-to-scratch-file staging. Abort the fetch and tell
+          // the backend to drop whatever it's staged so far (the gap
+          // between chunk requests means an abort signal alone isn't
+          // always enough to reach it in time -- see
+          // cancel_upload_stream's docstring in api.py).
+          staging.controller.abort();
+          return api(`/api/uploads/${encodeURIComponent(id)}`, { method: 'DELETE' });
+        } else {
+          return api(`/api/transfers/${id}/cancel`, { method: 'POST' });
+        }
+      },
+    });
+
+    // upload id (while staging) or transfer id (once real) -> the
+    // original File object, kept only long enough to retry-with-
+    // overwrite on a name conflict (see the WS handler below) without
+    // asking the user to re-pick the file.
+    const uploadsStaging = {};     // upload id -> { controller }, only during the local staging stage
+    const pendingRetryFiles = {};  // real transfer id -> File, only for a first (overwrite=false) attempt
+    const stagedRetryFiles = {};
+
+    connectEventSocket((data) => {
+      if (data.type !== 'log') return;
+      // Only this device's own outbound client activity and the
+      // host's replies to it -- not the host role's internal events
+      // (PIN rotation, other peers' connections, etc), which belong
+      // on the Host page instead.
+      if (data.logger && data.logger.startsWith('filetransfer.hostlink')) {
+        renderLogLine(logPanel, data);
+      }
+    });
+
+    function handleTransferEvent(evt) {
+      if (evt.type === 'TRANSFER_SNAPSHOT') {
+        transferQueue.syncSnapshot(evt);
+        return;
+      }
+      if (evt.side !== 'client') return;  // this page only ever has one connection, but be explicit
+      const state = (evt.state || '').toLowerCase();
+
+      if (evt.type === 'TRANSFER_FAILED' && pendingRetryFiles[evt.id]
+          && evt.error && evt.error.includes('already exists')) {
+        const file = pendingRetryFiles[evt.id];
+        delete pendingRetryFiles[evt.id];
+        transferQueue.removeRow(evt.id, true);
+        const overwrite = confirm(`"${file.name}" already exists on the host.\n\nOverwrite it?\n(Cancel = skip this file)`);
+        if (overwrite) {
+          startUpload(file, true);
+        } else {
+          logPanel.insertAdjacentHTML('beforeend', `<div class="log-line">Skipped (already exists): ${escapeHtml(file.name)}</div>`);
+        }
+        return;
+      }
+      if (TERMINAL_TRANSFER_STATES.has(state)) delete pendingRetryFiles[evt.id];
+      if (state === 'completed') refreshFiles().catch(() => {});
+
+      transferQueue.applyEvent(evt);
+    }
+    let transferStreamConnected = false, lastQueueSnapshot = 0;
+    connectTransferEventSocket(handleTransferEvent, {
+      side: 'client',
+      onStatus: text => { transferStreamConnected = text === 'Connected'; document.getElementById('queueStatus').textContent = transferStreamConnected ? 'Live updates connected' : 'Live updates reconnecting…'; },
+      onError: error => { document.getElementById('queueStatus').textContent = error.message; },
+    });
+
+    async function scanForHosts() {
+      const scanBtn = document.getElementById('scanBtn');
+      const scanStatus = document.getElementById('scanStatus');
+      const discoveredList = document.getElementById('discoveredList');
+      if (scanBtn.disabled) return;
+      scanBtn.disabled = true;
+      scanBtn.classList.add('busy');
+      document.getElementById('scanVisual').classList.add('is-scanning');
+      scanStatus.textContent = 'Scanning for hosts on this network...';
+      discoveredList.style.display = 'none';
+      discoveredList.innerHTML = '';
+      try {
+      const res = await api('/api/client/discover');
+      if (res.ok === false) throw new Error(res.error || 'Could not search the network. Try again.');
+      const hosts = res.hosts || [];
+      if (hosts.length === 0) {
+        scanStatus.textContent = 'No hosts found. Enter the IP manually below (the host still needs to be started, and both devices need to be on the same network).';
+        return;
+      }
+
+      scanStatus.textContent = `Found ${hosts.length} host${hosts.length > 1 ? 's' : ''} — click one to fill it in:`;
+      discoveredList.style.display = 'block';
+      for (const h of hosts) {
+        const li = document.createElement('li');
+        const choice = document.createElement('button');
+        choice.className = 'host-choice';
+        choice.setAttribute('aria-pressed', 'false');
+        choice.textContent = `${h.name || h.ip} · ${h.ip}`;
+        choice.onclick = () => {
+          discoveredList.querySelectorAll('button').forEach(button => button.setAttribute('aria-pressed', 'false'));
+          choice.setAttribute('aria-pressed', 'true');
+          document.getElementById('hostInput').value = h.ip;
+          selectHost(h.ip, h.name);
+          document.getElementById('pinInput').focus();
+        };
+        li.appendChild(choice);
+        discoveredList.appendChild(li);
+      }
+      } catch (error) {
+        scanStatus.textContent = error.message || 'Search failed. Try again or enter the host address.';
+      } finally {
+        scanBtn.disabled = false;
+        scanBtn.classList.remove('busy');
+        document.getElementById('scanVisual').classList.remove('is-scanning');
+      }
+    }
+
+    async function connectToHost() {
+      const host = document.getElementById('hostInput').value.trim();
+      const pin = document.getElementById('pinInput').value.trim();
+      const connectBtn = document.getElementById('connectBtn');
+      if (connectBtn.disabled) return;
+      if (!host || !/^[0-9]{6}$/.test(pin)) { connectStatus.textContent = 'Enter a host address and a 6-digit PIN.'; return; }
+      connectBtn.disabled = true;
+      connectBtn.classList.add('busy');
+      connectStatus.textContent = 'Connecting — waiting for host to approve...';
+      try {
+      const res = await api('/api/client/connect', {
+        method: 'POST',
+        body: JSON.stringify({ host, pin, fingerprint: document.getElementById('fingerprintInput').value.trim() || null }),
+      });
+
+      if (res.ok) {
+        await syncSavedTransfers();
+        statusDot.classList.add('on');
+        connectCard.style.display = 'none';
+        filesCard.style.display = 'block';
+        await refreshFiles();
+      } else {
+        connectStatus.textContent = 'Failed: ' + res.error;
+      }
+      } catch (error) {
+        connectStatus.textContent = error.message || 'Could not connect. Please try again.';
+      } finally {
+        connectBtn.disabled = false;
+        connectBtn.classList.remove('busy');
+      }
+    }
+
+    async function disconnect() {
+      const button = document.getElementById('disconnectBtn');
+      button.disabled = true; button.classList.add('busy');
+      try {
+      const result = await api('/api/client/disconnect', { method: 'POST' });
+      if (result.ok === false) throw new Error(result.error || 'Could not disconnect');
+      statusDot.classList.remove('on');
+      filesCard.style.display = 'none';
+      connectCard.style.display = 'block';
+      connectStatus.textContent = '';
+      abortStagingUploads();
+      } catch (error) { document.getElementById('queueStatus').textContent = error.message; }
+      finally { button.disabled = false; button.classList.remove('busy'); }
+    }
+
+    function backToConnectScreen(message) {
+      statusDot.classList.remove('on');
+      filesCard.style.display = 'none';
+      connectCard.style.display = 'block';
+      connectStatus.textContent = message || '';
+      abortStagingUploads();
+    }
+
+    // Shared by disconnect() and backToConnectScreen() -- everything
+    // in the queue belonged to the connection that just closed. Any
+    // upload still mid-staging is aborted too, not just visually
+    // cleared, so its fetch() doesn't keep running in the background
+    // against a connection that's already gone.
+    function abortStagingUploads() {
+      for (const [id, info] of Object.entries(uploadsStaging)) {
+        info.controller.abort();
+        transferQueue.removeRow(id);
+      }
+      for (const k of Object.keys(uploadsStaging)) delete uploadsStaging[k];
+      for (const k of Object.keys(pendingRetryFiles)) delete pendingRetryFiles[k];
+    }
+
+    let checkingConnection = false;
+    async function syncSavedTransfers(force = true) {
+      if (checkingConnection) return;
+      checkingConnection = true;
+      try {
+        const status = await api('/api/client/status');
+        if (force || !transferStreamConnected || Date.now() - lastQueueSnapshot >= 15000) {
+          const saved = await api('/api/transfers');
+          transferQueue.syncSnapshot(saved);
+          lastQueueSnapshot = Date.now();
+        }
+        transferQueue.setConnected(status.connected);
+        const wasConnected = statusDot.classList.contains('on');
+        statusDot.classList.toggle('on', Boolean(status.connected));
+        if (status.connected) {
+          connectCard.style.display = 'none';
+          filesCard.style.display = 'block';
+          if (!wasConnected) await refreshFiles();
+        } else if (status.host) {
+          filesCard.style.display = 'none';
+          connectCard.style.display = 'block';
+          const input = document.getElementById('hostInput');
+          if (!input.value) input.value = status.host;
+          if (!connectStatus.textContent.startsWith('Connecting')) {
+            connectStatus.textContent = status.error || 'Saved transfers are retained. Enter a fresh PIN and reconnect to recover them.';
+          }
+        }
+      } finally {
+        checkingConnection = false;
+      }
+    }
+    syncSavedTransfers().catch(() => {});
+    setInterval(() => syncSavedTransfers(false).catch(() => {}), 2000);
+
+    async function refreshFiles() {
+      const refreshBtn = document.getElementById('refreshBtn');
+      refreshBtn.disabled = true; refreshBtn.classList.add('busy');
+      try {
+      const res = await api('/api/client/files');
+      if (res.disconnected) { backToConnectScreen(res.error); return; }
+      if (!res.ok) { fileList.textContent = res.error || 'Could not list files'; return; }
+      if (res.files.length === 0) { fileList.innerHTML = '<li class="muted">No files yet.</li>'; return; }
+      fileList.innerHTML = '';
+      for (const f of res.files) {
+        const li = document.createElement('li');
+        li.dataset.filename = f;
+        const name = document.createElement('span'); name.textContent = f; li.appendChild(name);
+        const actions = document.createElement('span');
+        for (const [label, action] of [['Download', downloadFile], ['Delete', deleteFile]]) {
+          const button = document.createElement('button'); button.textContent = label;
+          button.className = label === 'Delete' ? 'danger' : 'secondary';
+          button.onclick = () => action(f).catch(error => { document.getElementById('queueStatus').textContent = error.message; });
+          actions.appendChild(button);
+        }
+        li.appendChild(actions);
+        fileList.appendChild(li);
+      }
+      filterSharedFiles();
+      } finally { refreshBtn.disabled = false; refreshBtn.classList.remove('busy'); }
+    }
+
+    function filterSharedFiles() {
+      const query = document.getElementById('fileSearch').value.trim().toLocaleLowerCase();
+      let visible = 0;
+      fileList.querySelectorAll('li[data-filename]').forEach(row => {
+        row.hidden = !row.dataset.filename.toLocaleLowerCase().includes(query);
+        if (!row.hidden) visible++;
+      });
+      fileList.querySelector('.search-empty')?.remove();
+      if (query && !visible) {
+        const message = document.createElement('li');
+        message.className = 'muted search-empty'; message.textContent = 'No matching files. Try another name.';
+        fileList.appendChild(message);
+      }
+    }
+
+    function pickFiles() {
+      document.getElementById('fileInput').click();
+    }
+
+    function onFilesPicked(evt) {
+      queueUploads(Array.from(evt.target.files));
+      evt.target.value = '';
+    }
+
+    // -- drag and drop --
+    ['dragenter', 'dragover'].forEach(evt =>
+      dropzone.addEventListener(evt, (e) => { e.preventDefault(); dropzone.classList.add('dragover'); }));
+    ['dragleave', 'drop'].forEach(evt =>
+      dropzone.addEventListener(evt, (e) => { e.preventDefault(); dropzone.classList.remove('dragover'); }));
+    dropzone.addEventListener('drop', (e) => {
+      const files = Array.from(e.dataTransfer.files || []);
+      if (files.length) queueUploads(files);
+    });
+
+    // Every file starts staging immediately, all at once -- the
+    // backend already supports real concurrent transfers (scheduling);
+    // the old "await uploadOne(file)" loop could only ever run one at
+    // a time regardless, an artificial limit this removes.
+    function queueUploads(files) {
+      window.sendSelection(files);
+    }
+
+    function makeUploadId() {
+      if (window.crypto && crypto.randomUUID) return crypto.randomUUID();
+      return 'up-' + Date.now() + '-' + Math.random().toString(36).slice(2);
+    }
+
+    async function sendFileChunked(file, overwrite, controller, uploadId) {
+      const totalChunks = Math.max(1, Math.ceil(file.size / UPLOAD_CHUNK_SIZE));
+      let lastData = null;
+
+      for (let i = 0; i < totalChunks; i++) {
+        const start = i * UPLOAD_CHUNK_SIZE;
+        const chunk = file.slice(start, start + UPLOAD_CHUNK_SIZE);
+        const isFinal = i === totalChunks - 1;
+        const params = new URLSearchParams({
+          upload_id: uploadId, filename: file.name, size: file.size,
+          chunk_index: i, is_final: isFinal, overwrite: overwrite,
+        });
+
+        const res = await fetch(`/api/uploads/${encodeURIComponent(uploadId)}/chunks?${params}`, {
+          method: 'POST',
+          body: chunk,  // one small slice per request, never the whole file at once
+          signal: controller.signal,
+          headers: { 'Content-Type': 'application/octet-stream' },
+        });
+        lastData = await res.json();
+
+        // A failure can surface on any chunk, not just the final one
+        // (e.g. the connection dropped partway through) -- stop early
+        // rather than continuing to send chunks nobody's listening for.
+        if (!res.ok || lastData.disconnected || !lastData.ok) {
+          return lastData;
+        }
+      }
+      return lastData;
+    }
+
+    // This caps browser request staging only; backend transfer admission is independent.
+    let activeStaging = 0;
+    const stagingWaiters = [];
+    function stagingSlot(signal) {
+      return new Promise((resolve, reject) => {
+        const entry = {signal, resolve, reject};
+        entry.abort = () => {
+          const index = stagingWaiters.indexOf(entry);
+          if (index >= 0) stagingWaiters.splice(index, 1);
+          reject(new DOMException('Upload cancelled', 'AbortError'));
+        };
+        if (signal.aborted) { entry.abort(); return; }
+        signal.addEventListener('abort', entry.abort, {once: true});
+        stagingWaiters.push(entry); pumpStaging();
+      });
+    }
+    function pumpStaging() {
+      while (activeStaging < 3 && stagingWaiters.length) {
+        const entry = stagingWaiters.shift();
+        entry.signal.removeEventListener('abort', entry.abort);
+        if (entry.signal.aborted) { entry.abort(); continue; }
+        activeStaging++;
+        entry.resolve(() => { activeStaging--; pumpStaging(); });
+      }
+    }
+    async function startUpload(file, overwrite) {
+      const uploadId = makeUploadId();  // this file's id while staging; replaced by the real transfer id once known
+      const controller = new AbortController();
+      uploadsStaging[uploadId] = { controller };
+      stagedRetryFiles[uploadId] = file;
+      transferQueue.applyEvent({
+        id: uploadId, type: 'TRANSFER_CREATED', side: 'client',
+        direction: 'upload', filename: file.name, state: 'staging', local: true,
+        total_size: file.size, offset: 0,
+      });
+
+      let release;
+      try {
+        release = await stagingSlot(controller.signal);
+        const data = await sendFileChunked(file, overwrite, controller, uploadId);
+        delete uploadsStaging[uploadId];
+
+        if (data.disconnected) {
+          transferQueue.removeRow(uploadId); delete stagedRetryFiles[uploadId];
+          backToConnectScreen(data.error);
+          return;
+        }
+        if (!data.ok) {
+          // Staging itself failed (e.g. a local disk write error) --
+          // nothing ever reached the scheduler, so there's no transfer
+          // for the WS feed to report on; show the failure directly.
+          transferQueue.applyEvent({
+            id: uploadId, type: 'TRANSFER_FAILED', side: 'client',
+            direction: 'upload', filename: file.name, state: 'failed',
+            error: data.error || 'upload failed',
+          });
+          return;
+        }
+
+        delete stagedRetryFiles[uploadId];
+        // Staged and handed to the scheduler -- hand the row over to
+        // the real transfer id; every further update for it comes
+        // from the WS feed from here on. A fast transfer can have its
+        // first WS event (possibly even its last -- a small enough
+        // file can complete before this line runs) arrive before this
+        // code does, which would already have created a row under the
+        // real id; renaming the staging row over it would then abandon
+        // that one, orphaning the OLD staging row (stuck at whatever
+        // state it last had, forever, since nothing above ever
+        // revisits it) while a newer, already-correct row exists
+        // under the real id. Checking first avoids the duplicate.
+        if (transferQueue.hasRow(data.transfer.id)) {
+          transferQueue.removeRow(uploadId);
+        } else {
+          transferQueue.renameRow(uploadId, data.transfer.id);
+          transferQueue.applyEvent({ ...data.transfer, type: 'TRANSFER_STARTED', side: 'client' });
+        }
+        if (!overwrite && !['completed', 'cancelled'].includes(data.transfer.state)) {
+          pendingRetryFiles[data.transfer.id] = file;
+          if (data.transfer.state === 'failed') handleTransferEvent({...data.transfer, side: 'client', type: 'TRANSFER_FAILED'});
+        }
+      } catch (e) {
+        delete uploadsStaging[uploadId];
+        if (e.name === 'AbortError') {
+          delete stagedRetryFiles[uploadId];
+          transferQueue.removeRow(uploadId);
+          logPanel.insertAdjacentHTML('beforeend', `<div class="log-line">Cancelled: ${escapeHtml(file.name)}</div>`);
+        } else {
+          transferQueue.applyEvent({
+            id: uploadId, type: 'TRANSFER_FAILED', side: 'client',
+            direction: 'upload', filename: file.name, state: 'failed',
+            error: e.message || 'upload error',
+          });
+        }
+      } finally { if (release) release(); }
+    }
+
+    async function downloadFile(name) {
+      // Native "Save As" dialog when running inside the desktop app --
+      // lets the user pick exactly where to save, matching how upload's
+      // file picker already works, and goes through the same live
+      // transfer queue as uploads. Falls back to a plain browser
+      // download (the browser's own native download, untouched by any
+      // of this) if this is ever opened outside pywebview (e.g. a
+      // regular browser tab during development).
+      let destPath = null;
+      if (window.pywebview && window.pywebview.api && window.pywebview.api.pick_save_location) {
+        destPath = await window.pywebview.api.pick_save_location(name);
+        if (!destPath) return;  // user cancelled the dialog
+      }
+        const res = await api('/api/transfers', {
+          method: 'POST',
+          body: JSON.stringify({ direction: 'download', filename: name, dest_path: destPath }),
+        });
+
+        if (res.disconnected) { backToConnectScreen(res.error); return; }
+        if (!res.ok) {
+          logPanel.insertAdjacentHTML('beforeend', `<div class="log-line lvl-ERROR">Download failed: ${escapeHtml(name)}${res.error ? ' — ' + escapeHtml(res.error) : ''}</div>`);
+          return;
+        }
+        transferQueue.applyEvent({ ...res.transfer, type: 'TRANSFER_STARTED', side: 'client' });
+        return;
+    }
+
+    async function deleteFile(name) {
+      if (!confirm(`Delete "${name}" from the host? This cannot be undone.`)) return;
+      const res = await fetch(`/api/client/delete/${encodeURIComponent(name)}`, { method: 'DELETE' });
+      const data = await res.json();
+      if (data.disconnected) { backToConnectScreen(data.error); return; }
+      if (!res.ok || data.ok === false) throw new Error(data.error || 'Could not delete this file');
+      await refreshFiles();
+    }
+  </script>
+</body>
+</html>

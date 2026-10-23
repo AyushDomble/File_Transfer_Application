@@ -1,0 +1,337 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>File Transfer — Host</title>
+  <script src="/theme.js"></script>
+  <link rel="stylesheet" href="/style.css">
+  <link rel="stylesheet" href="/chat.css">
+  <link rel="stylesheet" href="/rules.css">
+  <script src="/rules.js" defer></script>
+  <script src="/refresh.js" defer></script>
+  <script src="/chat.js" defer></script>
+</head>
+<body class="host-page">
+  <a class="skip-link" href="#main">Skip to content</a>
+  <header class="topbar">
+    <a class="brand" href="/index.html"><span class="brand-mark" aria-hidden="true">⇄</span>File Transfer</a>
+    <div class="topbar-actions"><a href="/index.html">Home</a><label class="theme-picker"><span>Appearance</span><select id="themeSelect" aria-label="Color theme"><option value="system">System</option><option value="light">Light</option><option value="dark">Dark</option></select></label></div>
+  </header>
+  <main id="main" class="workspace">
+    <div class="page-heading"><div><p class="eyebrow">Your hosting space</p><h1>Open the door to sharing.</h1><p>One PIN. A nearby device. You choose who comes in.</p></div><div class="session-badge" role="status"><span id="statusDot" class="status-dot" aria-hidden="true"></span><span id="connectionLabel">Host offline</span></div></div>
+    <div class="refresh-controls"><span id="refreshStatus" class="muted" role="status"></span><button id="refreshPage" class="secondary" type="button">↻ Refresh</button></div>
+    <div class="panel left">
+      <div class="card server-card">
+        <h2><span class="step-number">1</span>Start your host</h2>
+        <p class="intro">Start the server, then share the PIN below with someone on your network.</p>
+        <div class="row">
+          <button id="startBtn" onclick="startServer()">Start Server</button>
+          <button id="stopBtn" class="danger" onclick="stopServer()" disabled>Stop Server</button>
+        </div>
+        <div id="serverInfo" class="muted" role="status">Server is not running.</div>
+        <div id="serverError" role="alert"></div>
+        <div id="pinDisplay" class="pin-display" aria-label="Pairing PIN" style="display:none;"></div>
+        <div id="pinNote" class="muted" style="display:none;text-align:center;">Single-use PIN · Refreshes after pairing</div>
+        <p class="muted">Certificate fingerprint · Share directly with your client for first pairing.</p>
+        <code id="certificateFingerprint" style="display:block;overflow-wrap:anywhere;user-select:all"></code>
+      </div>
+
+      <div class="card requests-card">
+        <h2><span class="step-number">2</span>Connection requests</h2>
+        <p class="intro">Only accept devices you recognize.</p>
+        <ul class="pending-list" id="pendingList"><li class="muted">None right now.</li></ul>
+        <h3>Incoming file groups</h3>
+        <div id="batchRequests" aria-live="polite">No groups awaiting approval.</div>
+      </div>
+
+      <details class="card settings-card">
+        <summary>File Transfer Rules <span class="caption">Permissions &amp; size limits</span></summary>
+        <div id="rulesEditor" class="settings-content"></div>
+        <div class="settings-content" hidden>
+        <label for="maxUploadInput" class="field-label">Maximum upload size (MB)</label>
+        <div class="row">
+          <input type="number" id="maxUploadInput" placeholder="0 = unlimited" min="0" step="any" aria-describedby="uploadLimitHelp">
+        </div>
+        <div id="uploadLimitHelp" class="muted">Use 0 for no size limit.</div>
+        <label for="blockedExtInput" class="field-label">Blocked extensions</label>
+        <div class="row">
+          <input type="text" id="blockedExtInput" placeholder=".exe,.bat,.sh">
+        </div>
+        <div class="row">
+          <button id="saveSettingsBtn" class="secondary" onclick="saveSettings()">Save Settings</button>
+          <span id="settingsStatus" class="muted" role="status"></span>
+        </div>
+        </div>
+      </details>
+
+      <div class="card peers-card">
+        <div class="card-title"><h2>Live sharing</h2><span class="caption">Devices &amp; transfers</span></div>
+        <p class="queue-hint">Follow every file here. Transfer controls live on the connected device.</p>
+        <div id="queueStatus" class="muted" role="status">Connecting to transfer events…</div>
+        <ul class="pending-list" id="peerList"><li class="muted">No one connected.</li></ul>
+        <details class="file-disclosure" open><summary>Transfer activity</summary>
+        <div class="empty-state queue-empty"><div class="empty-icon" aria-hidden="true">⇄</div><strong>Ready when they are</strong><p>Approve a connection and let the other device choose what to share. Each transfer will appear here.</p></div>
+        <div id="transferQueue" aria-label="Transfer queue"></div>
+        </details>
+      </div>
+
+      <div class="card shared-card">
+        <h2>Files on this device</h2>
+        <details class="file-disclosure"><summary>Browse received files</summary>
+        <div class="row">
+          <button class="secondary" onclick="refreshFiles().catch(showServerError)">List Files</button>
+        </div>
+        <ul class="file-list" id="fileList"><li class="muted">Start the server to see shared files.</li></ul>
+        </details>
+      </div>
+    </div>
+
+    <div class="panel right">
+      <details class="activity"><summary>Activity log <span class="caption">Connection details, when you need them</span></summary><div class="log-panel" id="logPanel"></div></details>
+    </div>
+    <p class="footer-note">Direct device-to-device sharing · Keep this app open while transferring</p>
+  </main>
+
+  <script src="/app.js"></script>
+  <script>
+    const statusDot = document.getElementById('statusDot');
+    const startBtn = document.getElementById('startBtn');
+    const stopBtn = document.getElementById('stopBtn');
+    const serverInfo = document.getElementById('serverInfo');
+    const pinDisplay = document.getElementById('pinDisplay');
+    const pinNote = document.getElementById('pinNote');
+    const pendingList = document.getElementById('pendingList');
+    const peerList = document.getElementById('peerList');
+    const transferQueueEl = document.getElementById('transferQueue');
+    const fileList = document.getElementById('fileList');
+    const logPanel = document.getElementById('logPanel');
+    const maxUploadInput = document.getElementById('maxUploadInput');
+    const blockedExtInput = document.getElementById('blockedExtInput');
+    const settingsStatus = document.getElementById('settingsStatus');
+
+    // frontend queue: read-only -- pausing, resuming, or cancelling a
+    // transfer is the uploader/downloader's own call, not something
+    // this page offers on their behalf. Just a live view of what's
+    // actually happening, matching the client page's queue.
+    const transferQueue = createTransferQueueView(transferQueueEl, {
+      showControls: false,
+      keyForEvent: event => `${event.peer_id}:${event.id}`,
+    });
+
+    // peer_id -> ip, so transfer rows can be labelled with who they
+    // belong to -- refreshed alongside the peer list below.
+    let peerIpById = {};
+
+    connectEventSocket((data) => {
+      if (data.type === 'log') {
+        // Only show this device's own hosting activity here -- outbound
+        // client activity (if this same app is also used as a client)
+        // belongs on the Client page instead.
+        if (data.logger && data.logger.startsWith('filetransfer.host')) {
+          renderLogLine(logPanel, data);
+        }
+      } else if (data.type === 'pending') {
+        refreshPending().catch(showServerError);
+      } else if (data.type === 'pin') {
+        pinDisplay.textContent = data.pin;  // live update, e.g. after a client uses it or it times out
+      }
+    });
+
+    let transferStreamConnected = false, lastQueueSnapshot = 0;
+    connectTransferEventSocket((evt) => {
+      if (evt.type === 'TRANSFER_SNAPSHOT') { transferQueue.syncSnapshot(evt); return; }
+      if (evt.side !== 'host') return;  // the client page covers this device's own outbound transfers
+      const ip = peerIpById[evt.peer_id];
+      transferQueue.applyEvent(ip ? { ...evt, filename: `${evt.filename}  (${ip})` } : evt);
+    }, {side: 'host', onStatus: text => { transferStreamConnected = text === 'Connected'; document.getElementById('queueStatus').textContent = transferStreamConnected ? 'Live updates connected' : 'Live updates reconnecting…'; }});
+
+    function setRunningUI(running, info) {
+      document.getElementById('certificateFingerprint').textContent = running ? (info.certificate_fingerprint || 'Secure identity unavailable') : '';
+      statusDot.classList.toggle('on', running);
+      document.getElementById('connectionLabel').textContent = running ? 'Host is live' : info.stopping ? 'Finishing transfers' : 'Host offline';
+      startBtn.disabled = running;
+      stopBtn.disabled = !running && !info.stopping;
+      if (running) {
+        serverInfo.textContent = `Listening on ${info.ip}:${info.port}`;
+        pinDisplay.style.display = 'block';
+        pinNote.style.display = 'block';
+        pinDisplay.textContent = info.pin;
+      } else {
+        serverInfo.textContent = info.stopping ? 'Finishing previous transfer workers…' : 'Server is not running.';
+        pinDisplay.style.display = 'none';
+        pinNote.style.display = 'none';
+        pendingList.innerHTML = '<li class="muted">None right now.</li>';
+        peerList.innerHTML = '<li class="muted">No one connected.</li>';
+        peerIpById = {};
+        fileList.innerHTML = '<li class="muted">Start the server to see shared files.</li>';
+      }
+    }
+
+    async function startServer() {
+      await serverAction('/api/host/start');
+    }
+
+    function showServerError(error) {
+      document.getElementById('serverError').textContent = error.message || 'Could not reach the host service. Please try again.';
+    }
+
+    async function stopServer() {
+      await serverAction('/api/host/stop');
+    }
+
+    async function serverAction(path) {
+      const errorBox = document.getElementById('serverError');
+      errorBox.textContent = '';
+      startBtn.disabled = stopBtn.disabled = true;
+      const actionBtn = path.endsWith('/start') ? startBtn : stopBtn;
+      actionBtn.classList.add('busy');
+      try {
+        const res = await api(path, {method: 'POST'});
+        if (!res.ok) throw new Error(res.error || 'Server action was rejected');
+      } catch (error) {
+        errorBox.textContent = error.message || String(error);
+      } finally {
+        actionBtn.classList.remove('busy');
+        try {
+          const info = await api('/api/host/info');
+          setRunningUI(info.running, info);
+          if (info.running) { await refreshFiles(); refreshLoop(); }
+          else if (info.stopping) refreshLoop();
+        } catch (error) {
+          errorBox.textContent = errorBox.textContent || error.message || 'Server status unavailable';
+          startBtn.disabled = stopBtn.disabled = false; // allow a deliberate retry
+        }
+      }
+    }
+
+    async function refreshPending() {
+      const res = await api('/api/host/pending');
+      if (!res.pending || res.pending.length === 0) {
+        pendingList.innerHTML = '<li class="muted">None right now.</li>';
+        return;
+      }
+      pendingList.innerHTML = '';
+      for (const req of res.pending) {
+        const li = document.createElement('li');
+        const label = document.createElement('span'); label.textContent = req.ip; li.appendChild(label);
+        for (const [text, accept] of [['Accept', true], ['Reject', false]]) {
+          const button = document.createElement('button'); button.textContent = text;
+          button.className = accept ? '' : 'secondary';
+          button.onclick = () => respond(req.id, accept, li); li.appendChild(button);
+        }
+        pendingList.appendChild(li);
+      }
+    }
+
+    async function respond(id, accept, row) {
+      const buttons = row.querySelectorAll('button');
+      buttons.forEach(button => { button.disabled = true; });
+      row.classList.add('busy');
+      try {
+        const res = await api(`/api/host/${accept ? 'accept' : 'reject'}/${id}`, { method: 'POST' });
+        if (res.ok === false) throw new Error(res.error || 'Could not respond to the request');
+        await refreshPending();
+      } catch (error) { document.getElementById('serverError').textContent = error.message; }
+      finally { row.classList.remove('busy'); buttons.forEach(button => { button.disabled = false; }); }
+    }
+
+    async function refreshPeers() {
+      const res = await api('/api/host/peers');
+      const peers = res.peers || [];
+      peerIpById = Object.fromEntries(peers.map(p => [p.peer_id, p.ip]));
+      if (peers.length === 0) {
+        peerList.innerHTML = '<li class="muted">No one connected.</li>';
+        return;
+      }
+      peerList.innerHTML = '';
+      for (const p of peers) {
+        const li = document.createElement('li');
+        const name = document.createElement('span'); name.textContent = p.ip;
+        const state = document.createElement('span'); state.className = 'muted';
+        state.textContent = p.connected ? 'Connected' : 'Offline · transfers saved';
+        li.append(name, state);
+        peerList.appendChild(li);
+      }
+    }
+
+    async function refreshFiles() {
+      const res = await api('/api/host/files');
+      if (!res.files || res.files.length === 0) {
+        fileList.innerHTML = '<li class="muted">No files yet.</li>';
+        return;
+      }
+      fileList.innerHTML = '';
+      for (const f of res.files) {
+        const li = document.createElement('li');
+        li.textContent = f;
+        fileList.appendChild(li);
+      }
+    }
+
+    async function loadSettings() {
+      const res = await api('/api/host/settings');
+      maxUploadInput.value = res.max_upload_mb || 0;
+      blockedExtInput.value = res.blocked_extensions || '';
+    }
+
+    async function saveSettings() {
+      const button = document.getElementById('saveSettingsBtn');
+      const limit = Number(maxUploadInput.value);
+      if (!Number.isFinite(limit) || limit < 0) { settingsStatus.textContent = 'Enter a size of 0 or more.'; return; }
+      button.disabled = true; button.classList.add('busy');
+      settingsStatus.textContent = '';
+      try {
+      const res = await api('/api/host/settings', {
+        method: 'POST',
+        body: JSON.stringify({
+          max_upload_mb: limit,
+          blocked_extensions: blockedExtInput.value,
+        }),
+      });
+      if (res.ok === false) throw new Error(res.error || 'Could not save settings');
+      maxUploadInput.value = res.max_upload_mb;
+      blockedExtInput.value = res.blocked_extensions;
+      settingsStatus.textContent = 'Saved.';
+      setTimeout(() => settingsStatus.textContent = '', 1500);
+      } catch (error) { settingsStatus.textContent = error.message; }
+      finally { button.disabled = false; button.classList.remove('busy'); }
+    }
+
+    let poller = null;
+    let pollingHost = false;
+    function refreshLoop() {
+      if (poller) return;
+      poller = setInterval(async () => {
+        if (pollingHost) return;
+        pollingHost = true;
+        try {
+        const info = await api('/api/host/info');
+        if (!info.running) {
+          setRunningUI(false, info);
+          if (!info.stopping) { clearInterval(poller); poller = null; }
+          return;
+        }
+        setRunningUI(true, info);
+        await Promise.all([refreshPending(), refreshFiles(), refreshPeers()]);
+        if (!transferStreamConnected || Date.now() - lastQueueSnapshot >= 15000) {
+          const saved = await api('/api/host/transfers');
+          transferQueue.syncSnapshot({...saved, transfers: (saved.transfers || []).map(t => ({...t, side: 'host'}))});
+          lastQueueSnapshot = Date.now();
+        }
+        } catch (error) { showServerError(error); }
+        finally { pollingHost = false; }
+      }, 2000);
+    }
+
+    (async () => {
+      const info = await api('/api/host/info');
+      setRunningUI(info.running, info);
+      if (info.running) { refreshLoop(); await Promise.all([refreshPeers(), refreshFiles()]); }
+      const saved = await api('/api/host/transfers');
+      transferQueue.syncSnapshot({...saved, transfers: (saved.transfers || []).map(t => ({...t, side: 'host'}))});
+      await loadSettings();
+    })().catch(showServerError);
+  </script>
+</body>
+</html>

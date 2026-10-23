@@ -1,0 +1,12 @@
+python-dotenv>=1.0.0
+cryptography>=46.0.0
+fastapi>=0.110.0
+anyio>=4.0.0
+pydantic>=2.6.0
+uvicorn[standard]>=0.29.0
+websockets>=12.0
+pywebview>=5.1
+python-multipart>=0.0.9
+plyer>=2.1.0
+pytest>=8.0.0
+pyinstaller>=6.5.0

@@ -1,0 +1,112 @@
+# Python caches and generated metadata
+__pycache__/
+*.py[cod]
+*$py.class
+*.egg-info/
+.eggs/
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+.pyre/
+.hypothesis/
+
+# Virtual environments
+.venv/
+venv/
+env/
+ENV/
+
+# Local configuration and secrets
+.env
+.env.*
+!.env.example
+!.env.sample
+!.env.template
+
+# TLS identities and private-key containers
+*.pem
+*.key
+*.p12
+*.pfx
+*.keystore
+
+# Application data and test-created transfer directories
+/server_files/
+/client_files/
+/*_server_files/
+/*_client_files/
+.ft-state/
+
+# Persistent journals and SQLite sidecar files
+*.db
+*.db-journal
+*.db-wal
+*.db-shm
+*.db.d/
+*.sqlite
+*.sqlite-journal
+*.sqlite-wal
+*.sqlite-shm
+*.sqlite.d/
+*.sqlite3
+*.sqlite3-journal
+*.sqlite3-wal
+*.sqlite3-shm
+*.sqlite3.d/
+
+# Incomplete transfers and temporary files
+*.part
+*.part.*
+*.tmp
+*.temp
+
+# Logs, including rotated logs
+*.log
+*.log.*
+
+# Python packaging and executable build outputs
+/build/
+/dist/
+*.egg
+*.whl
+
+# Generated artifacts: keep source and authored docs outside these
+/artifacts/
+/outputs/
+/test-results/
+/playwright-report/
+/blob-report/
+/coverage/
+/htmlcov/
+/.pytest-tmp/
+
+# Test coverage and local reports
+.coverage
+.coverage.*
+/coverage.xml
+/junit.xml
+/local-performance.xml
+/zip-measurements.xml
+
+# Local release archives
+/filetransfer*.zip
+/File-Transfer-Documentation.zip
+
+# JavaScript dependencies
+node_modules/
+
+# Editor-local settings
+/.idea/
+/.vscode/
+*.swp
+*.swo
+*~
+
+# Operating-system metadata
+.DS_Store
+._*
+Thumbs.db
+Desktop.ini
+$RECYCLE.BIN/
+
+/SOURCE_MANIFEST.json
